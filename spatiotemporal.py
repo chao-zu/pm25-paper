@@ -1,5 +1,5 @@
 """
-Spatiotemporal plots of PM2.5 in Metro Manila
+Spatiotemporal plots of PM2.5 in the UP-Katipunan PUJ route
 
 @author: jarl
 """
@@ -18,8 +18,18 @@ import matplotlib.ticker as mticker
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from pathlib import Path
 
-# add basemap function, I messed around with this and i'm not sure what exactly the difference is
 def add_basemap(gdf, ax, zoom, url='http://tile.stamen.com/terrain/tileZ/tileX/tileY.png'):
+    """Add basemap to an Axes.
+
+    This function adds a basemap from Stamen tiles. I think I just used a WGS84 extent to force the bounds here. 
+    Different tile types are available on the website.
+
+    Args:
+        gdf (_type_): GeoDataFrame containing the points from which extents are computed
+        ax (_type_): Figure Axes where the basemap is to be added
+        zoom (_type_): Zoom level
+        url (str, optional): URL for the basemap style Defaults to 'http://tile.stamen.com/terrain/tileZ/tileX/tileY.png'
+    """
     # finding the extent of the input data so that the basemap covers the whole of the graph;
     # we use geopandas to convert the input dataframe to EPSG:3857 which is what contextily uses
     xmin, ymin, xmax, ymax = gdf.to_crs(epsg=3857).total_bounds 
@@ -39,8 +49,15 @@ def add_basemap(gdf, ax, zoom, url='http://tile.stamen.com/terrain/tileZ/tileX/t
     ax.imshow(np.flipud(basemap), extent=wgs84_extent, interpolation='bilinear')
 
 
-# lat lon labels
 def lat_lon_labels(ax, extent, nx = 2, ny = 3):
+    """Create lat-lon labels.
+
+    Args:
+        ax (_type_): Axes where labels are appended
+        extent (_type_): Axis bounds (unused)
+        nx (int, optional): Number of ticks along x. Defaults to 2.
+        ny (int, optional): Number of ticks along y. Defaults to 3.
+    """
     gl = ax.gridlines(draw_labels=True)
     gl.xlabels_top=False
     gl.ylabels_right=False
@@ -54,6 +71,15 @@ def lat_lon_labels(ax, extent, nx = 2, ny = 3):
 
 ### gdf plotting ###
 def spatiotemporal(gdf, axis):
+    """Create spatiotemporal plot.
+
+    Circles are placed centered at a pair of coordinates, 
+    and colored by the cmap corresponding the the mean PM2.5 value.
+
+    Args:
+        gdf (_type_): GeoDataFrame from which spatiotemporal plot is created
+        axis (_type_): Axes where plot is to be added
+    """
     global extent, vmin, vmax, hide_label
     
     gdf.plot('calib_pm25', cmap='rainbow', ax=axis, vmin=vmin , vmax=vmax, 
@@ -68,6 +94,15 @@ def spatiotemporal(gdf, axis):
 
 ### histogram plotting ###
 def histplot(gdf, axis):
+    """Create companion histogram for the spatiotemporal plot.
+
+    Histograms are expressed as density, normalized by bin width (10 ug/m3), 
+    controlled by the "density" argument.
+
+    Args:
+        gdf (_type_): GeoDataFrame from which spatiotemporal plot is created
+        axis (_type_): Axes where plot is to be added
+    """
     global hide_label
     n,bins,patches = axis.hist(gdf['calib_pm25'], density=True, 
                                bins=np.linspace(0,90,10), color='gray', 
@@ -87,7 +122,7 @@ def histplot(gdf, axis):
 
 
 if __name__ == "__main__":
-    ### Point these to the geojson files ###
+    ### Point these to the geojson files created using geopandas ###
     root = Path(input("Path to gdf data: "))
     alldata = [root/'Alldata_SpatiallyGrouped.geojson']
 
@@ -141,12 +176,13 @@ if __name__ == "__main__":
         
     # make spatiotemporal plots
     for i in range(3):
-        hide_label = False
+        hide_label = False  # hide labels to avoid redundancy
         if i>0:
             hide_label = True
         spatiotemporal(rush_gdf[i], st[i])
         histplot(rush_gdf[i], hist[i])
         
+    # add colorbar shared by both plots
     cax = fig.add_subplot(gs[:,-1])
     sm = plt.cm.ScalarMappable(cmap='rainbow', norm=plt.Normalize(vmin=vmin, vmax=vmax))
     fig.colorbar(sm, cax=cax, extend='max')
